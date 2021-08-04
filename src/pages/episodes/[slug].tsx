@@ -1,43 +1,32 @@
-import { format, parseISO } from 'date-fns';
-import ptBR from 'date-fns/locale/pt-BR'
-import Image from 'next/image';
-import Link from 'next/link';
-import Head from 'next/head';
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { GetStaticPaths, GetStaticProps } from "next";
+import Image from "next/image";
+import Link from "next/link";
+import { api } from "../../services/api";
+import { convertDurationToTimeString } from "../../utils/convertDurationToTimeString";
 
-import { useRouter } from 'next/router'
-import next, { GetStaticPaths, GetStaticProps } from 'next';
+import styles from "./episode.module.scss";
 
-import { api } from '../../services/api';
-import { convertDurationToTimeString } from '../../utils/convertDurationToTimeString';
-
-import styles from './episode.module.scss';
-import { usePlayer } from '../../contexts/PlayerContext';
-
-type Episode = {
+interface Episode {
   id: string;
   title: string;
   thumbnail: string;
+  description: string;
   members: string;
-  duration: number;
+  duration: string;
   durationAsString: string;
   url: string;
   publishedAt: string;
-  description: string;
-};
+}
 
-type EpisodeProps = {
+interface EpisodeProps {
   episode: Episode;
 }
 
 export default function Episode({ episode }: EpisodeProps) {
-  const { play } = usePlayer();
-
   return (
     <div className={styles.episode}>
-      <Head>
-        <title>{episode.title} | Podcastr</title>
-      </Head>
-
       <div className={styles.thumbnailContainer}>
         <Link href="/">
           <button type="button">
@@ -50,7 +39,7 @@ export default function Episode({ episode }: EpisodeProps) {
           src={episode.thumbnail}
           objectFit="cover"
         />
-        <button type="button" onClick={() => play(episode)}>
+        <button type="button">
           <img src="/play.svg" alt="Tocar episódio" />
         </button>
       </div>
@@ -62,48 +51,46 @@ export default function Episode({ episode }: EpisodeProps) {
         <span>{episode.durationAsString}</span>
       </header>
 
-      <div 
-        className={styles.description} 
+      <div
+        className={styles.description}
         dangerouslySetInnerHTML={{ __html: episode.description }}
-      />
+      ></div>
     </div>
-  )
+  );
 }
 
+//! Método obrigatório sempre que usamos getStaticProps com parâmetros dinâmicos, pois
+//! quando criamos páginas estáticas porém com dados dinâmicos, o next não sabe qual dado
+//! vai ser criado, por isso precisamos usar getStaticPaths
+//! Se eu já passar um dado para o paths, ele já vai ser criado pelo next, agora deixando
+//! vazio, vai ser criado conforme o usuário acessar.
+//! Se eu não passar nenhum dado dentro de paths e fallback for false, vai retornar 404
+//! pois não foi gerado nenhuma página estática
+//! Se o fallback for true e paths vazio, ele vai procurar algum dado para gerar 
+//! a página estática, esse dado será gerado pelo lado do client(brownser)
+//! Se fallback for blocking, ele vai procurar o dado a ser gerado de forma estática
+//! dentro da camada do next(getStaticProps)
 export const getStaticPaths: GetStaticPaths = async () => {
-  const { data } = await api.get('episodes', {
-    params: {
-      _limit: 2,
-      _sort: 'published_at',
-      _order: 'desc'
-    }
-  })
-
-  const paths = data.map(episode => {
-    return {
-      params: {
-        slug: episode.id
-      }
-    }
-  })
-
   return {
-    paths,
-    fallback: 'blocking'
-  }
-}
+    paths: [],
+    fallback: "blocking",
+  };
+};
+
 
 export const getStaticProps: GetStaticProps = async (ctx) => {
   const { slug } = ctx.params;
 
-  const { data } = await api.get(`/episodes/${slug}`)
+  const { data } = await api.get(`/episodes/${slug}`);
 
   const episode = {
     id: data.id,
     title: data.title,
     thumbnail: data.thumbnail,
     members: data.members,
-    publishedAt: format(parseISO(data.published_at), 'd MMM yy', { locale: ptBR }),
+    publishedAt: format(new Date(data.published_at), "d MMM yy", {
+      locale: ptBR,
+    }),
     duration: Number(data.file.duration),
     durationAsString: convertDurationToTimeString(Number(data.file.duration)),
     description: data.description,
@@ -114,6 +101,6 @@ export const getStaticProps: GetStaticProps = async (ctx) => {
     props: {
       episode,
     },
-    revalidate: 60 * 60 * 24, // 24 hours
-  }
-}
+    revalidate: 60 * 60 * 24, // 24 horas
+  };
+};

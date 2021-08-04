@@ -1,48 +1,39 @@
-import { GetStaticProps } from 'next';
-import Image from 'next/image';
-import Head from 'next/head';
-import Link from 'next/link'
-import { format, parseISO } from 'date-fns';
-import ptBR from 'date-fns/locale/pt-BR'
+import { GetStaticProps } from "next";
+import Link from "next/link";
+import { api } from "../services/api";
+import Image from "next/image";
 
-import { api } from '../services/api';
-import { convertDurationToTimeString } from '../utils/convertDurationToTimeString';
-import { usePlayer } from '../contexts/PlayerContext';
+import format from "date-fns/format";
+import ptBR from "date-fns/locale/pt-BR";
+import { convertDurationToTimeString } from "../utils/convertDurationToTimeString";
 
-import styles from './home.module.scss';
+import styles from "./home.module.scss";
 
-type Episode = {
+interface Episode {
   id: string;
   title: string;
   thumbnail: string;
+  description: string;
   members: string;
-  duration: number;
+  duration: string;
   durationAsString: string;
   url: string;
   publishedAt: string;
 }
 
-type HomeProps = {
+interface HomeProps {
+  allEpisodes: Episode[]; // vai ser um array de objetos com a tipagem de Episode
   latestEpisodes: Episode[];
-  allEpisodes: Episode[];
 }
 
-export default function Home({ latestEpisodes, allEpisodes }: HomeProps) {
-  const { playList } = usePlayer()
-
-  const episodeList = [...latestEpisodes, ...allEpisodes];
-
+export default function Home({ allEpisodes, latestEpisodes }: HomeProps) {
   return (
     <div className={styles.homepage}>
-      <Head>
-        <title>Home | Podcastr</title>
-      </Head>
-
       <section className={styles.latestEpisodes}>
         <h2>Últimos lançamentos</h2>
 
         <ul>
-          {latestEpisodes.map((episode, index) => {
+          {latestEpisodes.map((episode) => {
             return (
               <li key={episode.id}>
                 <Image
@@ -52,21 +43,21 @@ export default function Home({ latestEpisodes, allEpisodes }: HomeProps) {
                   alt={episode.title}
                   objectFit="cover"
                 />
-
                 <div className={styles.episodeDetails}>
                   <Link href={`/episodes/${episode.id}`}>
                     <a>{episode.title}</a>
                   </Link>
+
                   <p>{episode.members}</p>
                   <span>{episode.publishedAt}</span>
                   <span>{episode.durationAsString}</span>
                 </div>
 
-                <button type="button" onClick={() => playList(episodeList, index)}>
+                <button type="button">
                   <img src="/play-green.svg" alt="Tocar episódio" />
                 </button>
               </li>
-            )
+            );
           })}
         </ul>
       </section>
@@ -86,7 +77,7 @@ export default function Home({ latestEpisodes, allEpisodes }: HomeProps) {
             </tr>
           </thead>
           <tbody>
-            {allEpisodes.map((episode, index) => {
+            {allEpisodes.map((episode) => {
               return (
                 <tr key={episode.id}>
                   <td style={{ width: 72 }}>
@@ -99,58 +90,61 @@ export default function Home({ latestEpisodes, allEpisodes }: HomeProps) {
                     />
                   </td>
                   <td>
-                    <Link href={`/episodes/${episode.id}`}>
-                      <a>{episode.title}</a>
-                    </Link>
+                    
                   </td>
                   <td>{episode.members}</td>
                   <td style={{ width: 100 }}>{episode.publishedAt}</td>
                   <td>{episode.durationAsString}</td>
                   <td>
-                    <button type="button" onClick={() => playList(episodeList, index + latestEpisodes.length)}>
+                    <button type="button">
                       <img src="/play-green.svg" alt="Tocar episódio" />
                     </button>
                   </td>
                 </tr>
-              )
+              );
             })}
           </tbody>
         </table>
       </section>
     </div>
-  )
+  );
 }
 
 export const getStaticProps: GetStaticProps = async () => {
-  const { data } = await api.get('episodes', {
+  const { data } = await api.get("episodes", {
     params: {
       _limit: 12,
-      _sort: 'published_at',
-      _order: 'desc'
-    }
-  })
+      _sort: "published_at",
+      _order: "desc",
+    },
+  });
 
-  const episodes = data.map(episode => {
+  const episodes = data.map((episode) => {
     return {
       id: episode.id,
       title: episode.title,
       thumbnail: episode.thumbnail,
       members: episode.members,
-      publishedAt: format(parseISO(episode.published_at), 'd MMM yy', { locale: ptBR }),
+      publishedAt: format(new Date(episode.published_at), "d MMM yy", {
+        locale: ptBR,
+      }),
       duration: Number(episode.file.duration),
-      durationAsString: convertDurationToTimeString(Number(episode.file.duration)),
+      durationAsString: convertDurationToTimeString(
+        Number(episode.file.duration)
+      ),
+      description: episode.description,
       url: episode.file.url,
     };
-  })
+  });
 
   const latestEpisodes = episodes.slice(0, 2);
-  const allEpisodes = episodes.slice(2, episodes.length);
+  const allEpisodes = episodes.slice(2);
 
   return {
     props: {
-      latestEpisodes,
       allEpisodes,
+      latestEpisodes,
     },
-    revalidate: 60 * 60 * 8,
-  }
-}
+    revalidate: 60 * 60 * 24, // 24 horas
+  };
+};
