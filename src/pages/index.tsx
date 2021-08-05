@@ -8,6 +8,7 @@ import ptBR from "date-fns/locale/pt-BR";
 import { convertDurationToTimeString } from "../utils/convertDurationToTimeString";
 
 import styles from "./home.module.scss";
+import { usePlayer } from "../contexts/PlayerContext";
 
 interface Episode {
   id: string;
@@ -27,6 +28,8 @@ interface HomeProps {
 }
 
 export default function Home({ allEpisodes, latestEpisodes }: HomeProps) {
+  const { play } = usePlayer();
+
   return (
     <div className={styles.homepage}>
       <section className={styles.latestEpisodes}>
@@ -53,7 +56,7 @@ export default function Home({ allEpisodes, latestEpisodes }: HomeProps) {
                   <span>{episode.durationAsString}</span>
                 </div>
 
-                <button type="button">
+                <button type="button" onClick={() => play(episode)}>
                   <img src="/play-green.svg" alt="Tocar episódio" />
                 </button>
               </li>
@@ -90,13 +93,18 @@ export default function Home({ allEpisodes, latestEpisodes }: HomeProps) {
                     />
                   </td>
                   <td>
-                    
+                    {/* Usando somente a ancora, vai fazer todos os dados serem recarregados,
+                    agora usando link, os dados vão ficar salvos
+                     */}
+                    <Link href={`/episodes/${episode.id}`}>
+                      <a>{episode.title}</a>
+                    </Link>
                   </td>
                   <td>{episode.members}</td>
                   <td style={{ width: 100 }}>{episode.publishedAt}</td>
                   <td>{episode.durationAsString}</td>
                   <td>
-                    <button type="button">
+                    <button type="button" onClick={() => play(episode)}>
                       <img src="/play-green.svg" alt="Tocar episódio" />
                     </button>
                   </td>
