@@ -11,10 +11,13 @@ interface Episode {
 interface PlayerContextData {
   episodeList: Episode[];
   currentEpisodeIndex: number;
+  isPlaying: boolean;
   play: (episode: Episode) => void;
+  playList: (list: Episode[], index: number) => void;
+  playNext: () => void;
+  playPrevious: () => void;
   togglePlay: () => void;
   setPlayingState: (state: boolean) => void;
-  isPlaying: boolean;
 }
 
 interface PlayerContextProviderProps {
@@ -36,6 +39,12 @@ export function PlayerContextProvider({
     setIsPlaying(true);
   }
 
+  function playList(list: Episode[], index: number) {
+    setEpisodeList(list);
+    setCurrentEpisodeIndex(index);
+    setIsPlaying(true);
+  }
+
   function togglePlay() {
     setIsPlaying(!isPlaying);
   }
@@ -44,14 +53,33 @@ export function PlayerContextProvider({
     setIsPlaying(state);
   }
 
+  function playNext() {
+    if (currentEpisodeIndex + 1 === episodeList.length) {
+      setCurrentEpisodeIndex(0);
+    } else {
+      setCurrentEpisodeIndex((prevIndex) => prevIndex + 1);
+    }
+  }
+
+  function playPrevious() {
+    if (currentEpisodeIndex <= 0) {
+      setCurrentEpisodeIndex(episodeList.length - 1);
+    } else {
+      setCurrentEpisodeIndex((prevIndex) => prevIndex - 1);
+    }
+  }
+
   return (
     <PlayerContext.Provider
       value={{
         episodeList,
         currentEpisodeIndex,
-        play,
-        togglePlay,
         isPlaying,
+        play,
+        playList,
+        playNext,
+        playPrevious,
+        togglePlay,
         setPlayingState,
       }}
     >
